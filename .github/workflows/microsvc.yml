@@ -123,10 +123,11 @@ jobs:
           docker run --rm \
             -v "$(pwd):/usr/src" \
             sonarsource/sonar-scanner-cli:latest \
+            sonar-scanner \
             -Dsonar.projectKey=${{ matrix.service.name }} \
             -Dsonar.sources=/usr/src \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
+            -Dsonar.host.url="$SONAR_HOST_URL" \
+            -Dsonar.login="$SONAR_TOKEN"
 
       # =========================
       # Trivy FS Scan
