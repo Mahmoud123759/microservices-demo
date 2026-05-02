@@ -1,0 +1,264 @@
+name: Build, Scan and Push Microservices
+
+on:
+  push:
+    branches: [ main ]  # Only main branch
+    paths:
+      - 'src/**'
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      build_number:
+        description: 'Build number (e.g., 100, 101, 102)'
+        required: true
+        default: '1'
+        type: string
+
+jobs:
+  # Dynamic job matrix for all microservices
+  build-and-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # Continue with other services if one fails
+      matrix:
+        service:
+          - name: frontend
+            dockerhub_repo: mahmoud235/frontend
+            path: src/frontend
+            language: go
+            dockerfile: src/frontend/Dockerfile
+          - name: cartservice
+            dockerhub_repo: mahmoud235/cartservice
+            path: src/cartservice
+            language: csharp
+            dockerfile: src/cartservice/Dockerfile
+          - name: productcatalogservice
+            dockerhub_repo: mahmoud235/productcatalogservice
+            path: src/productcatalogservice
+            language: go
+            dockerfile: src/productcatalogservice/Dockerfile
+          - name: currencyservice
+            dockerhub_repo: mahmoud235/currencyservice
+            path: src/currencyservice
+            language: nodejs
+            dockerfile: src/currencyservice/Dockerfile
+          - name: paymentservice
+            dockerhub_repo: mahmoud235/paymentservice
+            path: src/paymentservice
+            language: nodejs
+            dockerfile: src/paymentservice/Dockerfile
+          - name: shippingservice
+            dockerhub_repo: mahmoud235/shippingservice
+            path: src/shippingservice
+            language: go
+            dockerfile: src/shippingservice/Dockerfile
+          - name: emailservice
+            dockerhub_repo: mahmoud235/emailservice
+            path: src/emailservice
+            language: python
+            dockerfile: src/emailservice/Dockerfile
+          - name: checkoutservice
+            dockerhub_repo: mahmoud235/checkoutservice
+            path: src/checkoutservice
+            language: go
+            dockerfile: src/checkoutservice/Dockerfile
+          - name: recommendationservice
+            dockerhub_repo: mahmoud235/recommendationservice
+            path: src/recommendationservice
+            language: python
+            dockerfile: src/recommendationservice/Dockerfile
+          - name: adservice
+            dockerhub_repo: mahmoud235/adservice
+            path: src/adservice
+            language: java
+            dockerfile: src/adservice/Dockerfile
+          - name: loadgenerator
+            dockerhub_repo: mahmoud235/loadgenerator
+            path: src/loadgenerator
+            language: python
+            dockerfile: src/loadgenerator/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for SonarQube analysis
+
+      # Determine build number
+      - name: Determine build number
+        id: build_number  # Changed from 'build' to 'build_number'
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
+          else
+            # Use GitHub run number as build number
+            BUILD_NUMBER="${{ github.run_number }}"
+          fi
+          echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "build_tag=build-${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Using build number: ${BUILD_NUMBER}"
+
+      # Setup for different languages
+      - name: Setup Go
+        if: matrix.service.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Setup Node.js
+        if: matrix.service.language == 'nodejs'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        if: matrix.service.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Java
+        if: matrix.service.language == 'java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup .NET
+        if: matrix.service.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      # Trivy FS Scan (pre-build)
+      - name: Run Trivy FS scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ matrix.service.path }}
+          format: 'sarif'
+          output: 'trivy-fs-results-${{ matrix.service.name }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          timeout: '10m'
+
+      - name: Upload Trivy FS results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs-results-${{ matrix.service.name }}.sarif'
+
+      # SonarQube Analysis
+      - name: SonarQube Scan
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
+        run: |
+          # Install sonar-scanner based on language
+          if [ "${{ matrix.service.language }}" = "java" ]; then
+            # For Java/Maven projects
+            cd ${{ matrix.service.path }}
+            mvn clean verify sonar:sonar \
+              -Dsonar.projectKey=${{ matrix.service.name }} \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+          elif [ "${{ matrix.service.language }}" = "csharp" ]; then
+            # For .NET projects
+            cd ${{ matrix.service.path }}
+            dotnet tool install --global dotnet-sonarscanner
+            dotnet sonarscanner begin \
+              /k:"${{ matrix.service.name }}" \
+              /d:sonar.host.url="$SONAR_HOST_URL" \
+              /d:sonar.token="$SONAR_TOKEN"
+            dotnet build
+            dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+          elif [ "${{ matrix.service.language }}" = "nodejs" ]; then
+            # For Node.js projects
+            cd ${{ matrix.service.path }}
+            npm install
+            npx sonarqube-scanner \
+              -Dsonar.projectKey=${{ matrix.service.name }} \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+          else
+            # For Go, Python, and others
+            docker run --rm \
+              -v $(pwd)/${{ matrix.service.path }}:/usr/src \
+              -e SONAR_HOST_URL=$SONAR_HOST_URL \
+              -e SONAR_TOKEN=$SONAR_TOKEN \
+              sonarsource/sonar-scanner-cli:latest \
+              -Dsonar.projectKey=${{ matrix.service.name }} \
+              -Dsonar.sources=/usr/src
+          fi
+
+      # Build Docker Image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push Docker image with build number
+        id: docker_build  # Changed from 'build' to 'docker_build'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.path }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: |
+            ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            org.opencontainers.image.version=${{ steps.build_number.outputs.build_number }}
+            build.number=${{ steps.build_number.outputs.build_number }}
+            build.tag=${{ steps.build_number.outputs.build_tag }}
+            service.name=${{ matrix.service.name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Trivy Image Scan (post-build)
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}
+          format: 'sarif'
+          output: 'trivy-image-results-${{ matrix.service.name }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          timeout: '10m'
+          ignore-unfixed: true
+
+      - name: Upload Trivy image results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image-results-${{ matrix.service.name }}.sarif'
+
+      # Optional: fail build if critical vulnerabilities found
+      - name: Check Trivy results for critical issues
+        run: |
+          if [ -f "trivy-image-results-${{ matrix.service.name }}.sarif" ]; then
+            if grep -q '"severity":"CRITICAL"' trivy-image-results-${{ matrix.service.name }}.sarif; then
+              echo "::warning::Critical vulnerabilities found in ${{ matrix.service.name }} image"
+              # Uncomment to fail the build
+              # exit 1
+            fi
+          fi
+
+      # Output build information
+      - name: Output build information
+        run: |
+          echo "=========================================="
+          echo "✅ Service: ${{ matrix.service.name }}"
+          echo "📦 Repository: ${{ matrix.service.dockerhub_repo }}"
+          echo "🔢 Build number: ${{ steps.build_number.outputs.build_number }}"
+          echo "🏷️  Image tag: ${{ steps.build_number.outputs.build_tag }}"
+          echo "🔑 Full image: ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}"
+          echo "🔐 Digest: ${{ steps.docker_build.outputs.digest }}"
+          echo "=========================================="
+
+      # Verify image was pushed successfully
+      - name: Verify image exists
+        run: |
+          docker pull ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}
+          echo "✓ Image verified: ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}"
