@@ -218,7 +218,7 @@ jobs:
 
       # Trivy Image Scan (post-build)
       - name: Run Trivy image scan
-        uses:  aquasecurity/trivy-action@0.20.0
+        uses:  aquasecurity/trivy-action@master
         with:
           image-ref: ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}
           format: 'sarif'
