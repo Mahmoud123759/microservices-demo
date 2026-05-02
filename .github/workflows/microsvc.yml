@@ -3,8 +3,6 @@ name: Build, Scan and Push Microservices
 on:
   push:
     branches: [ main ]   # Only main branch
-    paths:
-      - 'src/**'
   workflow_dispatch:  # Allow manual trigger
     inputs:
       build_number:
@@ -165,8 +163,8 @@ jobs:
             dotnet tool install --global dotnet-sonarscanner
             dotnet sonarscanner begin \
               /k:"${{ matrix.service.name }}" \
-              /d:sonar.host.url="$SONAR_HOST_URL" \
-              /d:sonar.token="$SONAR_TOKEN"
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
             dotnet build
             dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
           elif [ "${{ matrix.service.language }}" = "nodejs" ]; then
@@ -220,7 +218,7 @@ jobs:
 
       # Trivy Image Scan (post-build)
       - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@master
+        uses:  aquasecurity/trivy-action@0.20.0
         with:
           image-ref: ${{ matrix.service.dockerhub_repo }}:${{ steps.build_number.outputs.build_tag }}
           format: 'sarif'
