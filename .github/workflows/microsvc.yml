@@ -109,6 +109,9 @@ jobs:
       # =========================
       # SonarQube Scan (Local Server)
       # =========================
+      - name: Check SonarQube connectivity
+        run: |
+            curl -f ${{ secrets.SONAR_HOST_URL }}/api/server/version || exit 1
       - name: SonarQube Scan
         working-directory: ${{ matrix.service.path }}
         env:
