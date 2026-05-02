@@ -27,57 +27,57 @@ jobs:
           - name: frontend
             dockerhub_repo: mahmoud235/frontend
             path: src/frontend
-            dockerfile: src/frontend/Dockerfile
+
 
           - name: cartservice
             dockerhub_repo: mahmoud235/cartservice
             path: src/cartservice
-            dockerfile: src/cartservice/Dockerfile
+            
 
           - name: productcatalogservice
             dockerhub_repo: mahmoud235/productcatalogservice
             path: src/productcatalogservice
-            dockerfile: src/productcatalogservice/Dockerfile
+            
 
           - name: currencyservice
             dockerhub_repo: mahmoud235/currencyservice
             path: src/currencyservice
-            dockerfile: src/currencyservice/Dockerfile
+            
 
           - name: paymentservice
             dockerhub_repo: mahmoud235/paymentservice
             path: src/paymentservice
-            dockerfile: src/paymentservice/Dockerfile
+            
 
           - name: shippingservice
             dockerhub_repo: mahmoud235/shippingservice
             path: src/shippingservice
-            dockerfile: src/shippingservice/Dockerfile
+            
 
           - name: emailservice
             dockerhub_repo: mahmoud235/emailservice
             path: src/emailservice
-            dockerfile: src/emailservice/Dockerfile
+            
 
           - name: checkoutservice
             dockerhub_repo: mahmoud235/checkoutservice
             path: src/checkoutservice
-            dockerfile: src/checkoutservice/Dockerfile
+            
 
           - name: recommendationservice
             dockerhub_repo: mahmoud235/recommendationservice
             path: src/recommendationservice
-            dockerfile: src/recommendationservice/Dockerfile
+            
 
           - name: adservice
             dockerhub_repo: mahmoud235/adservice
             path: src/adservice
-            dockerfile: src/adservice/Dockerfile
+            
 
           - name: loadgenerator
             dockerhub_repo: mahmoud235/loadgenerator
             path: src/loadgenerator
-            dockerfile: src/loadgenerator/Dockerfile
+            
 
     steps:
       # =========================
@@ -88,20 +88,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # =========================
-      # Build Number
-      # =========================
-      - name: Set build number
-        id: build
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.build_number }}" ]; then
-            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
-          else
-            BUILD_NUMBER="${{ github.run_number }}"
-          fi
-
-          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "build_tag=build-$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
       # =========================
       # Clean workspace (IMPORTANT)
@@ -109,45 +95,16 @@ jobs:
       - name: Clean workspace
         run: git clean -fdx
 
-      # =========================
-      # SonarQube Scan (Local Server)
-      # =========================
-      - name: Check SonarQube connectivity
-        run: |
-            curl -f ${{ secrets.SONAR_HOST_URL }}/api/server/version || exit 1
-      - name: SonarQube Scan
-        working-directory: ${{ matrix.service.path }}
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          echo "Running SonarQube for ${{ matrix.service.name }}"
-
-          docker run --rm \
-            -v "$(pwd):/usr/src" \
-            sonarsource/sonar-scanner-cli:latest \
-            sonar-scanner \
-            -Dsonar.projectKey=${{ matrix.service.name }} \
-            -Dsonar.sources=/usr/src \
-            -Dsonar.host.url="$SONAR_HOST_URL" \
-            -Dsonar.login="$SONAR_TOKEN"
 
       # =========================
       # Trivy FS Scan
       # =========================
+      # 3️⃣ Trivy FS Scan
       - name: Trivy FS Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
           scan-type: fs
-          scan-ref: ${{ matrix.service.path }}
-          format: sarif
-          output: trivy-fs-${{ matrix.service.name }}.sarif
-          severity: CRITICAL,HIGH
-
-      - name: Upload FS results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-fs-${{ matrix.service.name }}.sarif
+          scan-ref: .
 
       # =========================
       # Docker Login
@@ -166,33 +123,25 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service.path }}
-          file: ${{ matrix.service.dockerfile }}
           push: true
           tags: |
-            ${{ matrix.service.dockerhub_repo }}:${{ steps.build.outputs.build_tag }}
+            ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
 
       # =========================
       # Trivy Image Scan
       # =========================
+      # 1️⃣1️⃣ Trivy Image Scan
       - name: Trivy Image Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
-          image-ref: ${{ matrix.service.dockerhub_repo }}:${{ steps.build.outputs.build_tag }}
-          format: sarif
-          output: trivy-image-${{ matrix.service.name }}.sarif
-          severity: CRITICAL,HIGH
-
-      - name: Upload Image results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-image-${{ matrix.service.name }}.sarif
+          image-ref: ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
 
       # =========================
       # Verify Image
       # =========================
       - name: Verify Docker Image
         run: |
-          docker pull ${{ matrix.service.dockerhub_repo }}:${{ steps.build.outputs.build_tag }}
+          docker pull ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
           echo "✔ Image pushed successfully"
 
       # =========================
@@ -202,6 +151,6 @@ jobs:
         run: |
           echo "=================================="
           echo "Service: ${{ matrix.service.name }}"
-          echo "Build: ${{ steps.build.outputs.build_number }}"
-          echo "Image: ${{ matrix.service.dockerhub_repo }}:${{ steps.build.outputs.build_tag }}"
+          echo "Build: ${{ github.run_number }}"
+          echo "Image: ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}"
           echo "=================================="

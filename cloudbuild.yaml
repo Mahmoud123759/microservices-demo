@@ -1,43 +1,103 @@
-# Copyright 2020 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+name: DevOps Pipeline
 
-# [START cloudbuild_microservice_demo_cloudbuild]
+on:
+  push:
+    branches: ["main"]
 
-# This configuration file is used to build and deploy the app into a
-# GKE cluster using Google Cloud Build.
-#
-# PREREQUISITES:
-# - Cloud Build service account must have role: "Kubernetes Engine Developer"
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-# USAGE:
-# GCP zone and GKE target cluster must be specified as substitutions
-# Example invocation:
-# `gcloud builds submit --config=cloudbuild.yaml --substitutions=_ZONE=us-central1-b,_CLUSTER=demo-app-staging .`
+    env:
 
-steps:
-- id: 'Deploy application to cluster'
-  name: 'gcr.io/k8s-skaffold/skaffold:v2.16.1'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - >
-    gcloud container clusters get-credentials --zone=$_ZONE $_CLUSTER;
-    skaffold run -f=skaffold.yaml --default-repo=gcr.io/$PROJECT_ID;
 
-# Add more power, and more time, for heavy Skaffold build
-timeout: '3600s'
-options:
-  machineType: 'N1_HIGHCPU_8'
-  
-# [END cloudbuild_microservice_demo_cloudbuild]
+      UI_ECR_REPO_NAME: ${{ secrets.UI_ECR_REPO_NAME }}
+      UI_REPOSITORY_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.UI_ECR_REPO_NAME }}
+
+      ORDERS_ECR_REPO_NAME: ${{ secrets.ORDERS_ECR_REPO_NAME }}
+      ORDERS_REPOSITORY_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ORDERS_ECR_REPO_NAME }}
+
+      CATALOG_ECR_REPO_NAME: ${{ secrets.CATALOG_ECR_REPO_NAME }}
+      CATALOG_REPOSITORY_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.CATALOG_ECR_REPO_NAME }}
+
+      CHECKOUT_ECR_REPO_NAME: ${{ secrets.CHECKOUT_ECR_REPO_NAME }}
+      CHECKOUT_REPOSITORY_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.CHECKOUT_ECR_REPO_NAME }}
+
+      CART_ECR_REPO_NAME: ${{ secrets.CART_ECR_REPO_NAME }}
+      CART_REPOSITORY_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.CART_ECR_REPO_NAME }}
+
+    steps:
+      # 1️⃣ Checkout
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Docker check
+      - name: Check Docker
+        run: |
+          docker --version
+          docker info
+
+      # 3️⃣ Trivy FS Scan
+      - name: Trivy FS Scan
+        uses: aquasecurity/trivy-action@v0.20.0
+        with:
+          scan-type: fs
+          scan-ref: .
+
+      # 4️⃣ AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      # 5️⃣ Login to ECR
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 6️⃣ Build & Push UI
+      - name: Build & Push UI
+        working-directory: src/ui
+        run: |
+          docker build -t $UI_ECR_REPO_NAME .
+          docker tag $UI_ECR_REPO_NAME $UI_REPOSITORY_URI:${{ github.run_number }}
+          docker push $UI_REPOSITORY_URI:${{ github.run_number }}
+
+      # 7️⃣ Build & Push Cart
+      - name: Build & Push Cart
+        working-directory: src/cart
+        run: |
+          docker build -t $CART_ECR_REPO_NAME .
+          docker tag $CART_ECR_REPO_NAME $CART_REPOSITORY_URI:${{ github.run_number }}
+          docker push $CART_REPOSITORY_URI:${{ github.run_number }}
+
+      # 8️⃣ Build & Push Catalog
+      - name: Build & Push Catalog
+        working-directory: src/catalog
+        run: |
+          docker build -t $CATALOG_ECR_REPO_NAME .
+          docker tag $CATALOG_ECR_REPO_NAME $CATALOG_REPOSITORY_URI:${{ github.run_number }}
+          docker push $CATALOG_REPOSITORY_URI:${{ github.run_number }}
+
+      # 9️⃣ Build & Push Orders
+      - name: Build & Push Orders
+        working-directory: src/orders
+        run: |
+          docker build -t $ORDERS_ECR_REPO_NAME .
+          docker tag $ORDERS_ECR_REPO_NAME $ORDERS_REPOSITORY_URI:${{ github.run_number }}
+          docker push $ORDERS_REPOSITORY_URI:${{ github.run_number }}
+
+      # 🔟 Build & Push Checkout
+      - name: Build & Push Checkout
+        working-directory: src/checkout
+        run: |
+          docker build -t $CHECKOUT_ECR_REPO_NAME .
+          docker tag $CHECKOUT_ECR_REPO_NAME $CHECKOUT_REPOSITORY_URI:${{ github.run_number }}
+          docker push $CHECKOUT_REPOSITORY_URI:${{ github.run_number }}
+
+      # 1️⃣1️⃣ Trivy Image Scan
+      - name: Trivy Image Scan
+        uses: aquasecurity/trivy-action@v0.20.0
+        with:
+          image-ref: ${{ env.UI_REPOSITORY_URI }}:${{ github.run_number }}
