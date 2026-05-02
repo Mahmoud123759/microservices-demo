@@ -31,7 +31,7 @@ jobs:
 
           - name: cartservice
             dockerhub_repo: mahmoud235/cartservice
-            path: src/cartservice
+            path: src/cartservice/src
             
 
           - name: productcatalogservice
@@ -104,7 +104,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.20.0
         with:
           scan-type: fs
-          scan-ref: .
+          scan-ref: ${{ matrix.service.path }}
 
       # =========================
       # Docker Login
