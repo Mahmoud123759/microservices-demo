@@ -2,7 +2,7 @@ name: Build, Scan and Push Microservices
 
 on:
   push:
-    branches: [ main ]  # Only main branch
+    branches: [ main ]   # Only main branch
     paths:
       - 'src/**'
   workflow_dispatch:  # Allow manual trigger
@@ -13,7 +13,7 @@ on:
         default: '1'
         type: string
 
-jobs:
+jobs: 
   # Dynamic job matrix for all microservices
   build-and-scan:
     runs-on: ubuntu-latest
