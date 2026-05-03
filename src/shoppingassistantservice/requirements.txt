@@ -193,15 +193,11 @@ pyasn1-modules==0.4.2
 pycparser==2.23
     # via cffi
 pydantic==2.12.5
-    # via
-    #   google-genai
-    #   langchain
-    #   langchain-core
-    #   langchain-google-genai
-    #   langgraph
-    #   langsmith
 pydantic-core==2.41.5
     # via pydantic
+aiohttp==3.10.5
+langchain
+langchain-core
 pyyaml==6.0.2
     # via langchain-core
 requests==2.32.5

@@ -15,7 +15,7 @@
 # Define a default value so it's not empty if the builder fails to provide it
 ARG BUILDPLATFORM=linux/amd64
 
-FROM --platform=$BUILDPLATFORM python:3.14.3-slim@sha256:fb83750094b46fd6b8adaa80f66e2302ecbe45d513f6cece637a841e1025b4ca AS base
+FROM --platform=$BUILDPLATFORM Python 3.12-slim AS base
 
 FROM base AS builder
 
@@ -41,7 +41,7 @@ COPY --from=builder /usr/local/lib/python3.14/ /usr/local/lib/python3.14/
 COPY . .
 
 # set listen port
-ENV PORT "8080"
-EXPOSE 8080
+ENV PORT "8085"
+EXPOSE 8085
 
 ENTRYPOINT ["python", "shoppingassistantservice.py"]
