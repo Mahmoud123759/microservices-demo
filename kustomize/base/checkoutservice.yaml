@@ -19,6 +19,7 @@ metadata:
   labels:
     app: checkoutservice
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: checkoutservice
@@ -28,7 +29,6 @@ spec:
         app: checkoutservice
     spec:
       serviceAccountName: checkoutservice
-      replicas: 2
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
