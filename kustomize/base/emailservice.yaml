@@ -43,7 +43,9 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice:v0.10.5
+        image: mahmoud235/emailservice:8
+        
+
         ports:
         - containerPort: 8080
         env:
