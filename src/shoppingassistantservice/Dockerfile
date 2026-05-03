@@ -15,7 +15,7 @@
 # Define a default value so it's not empty if the builder fails to provide it
 ARG BUILDPLATFORM=linux/amd64
 
-FROM --platform=$BUILDPLATFORM Python 3.12-slim AS base
+FROM --platform=$BUILDPLATFORM python:3.12-slim AS base
 
 FROM base AS builder
 
@@ -35,7 +35,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /shoppingassistantservice
 
 # Grab packages from builder
-COPY --from=builder /usr/local/lib/python3.14/ /usr/local/lib/python3.14/
+COPY --from=builder /usr/local/lib/python3.12/ /usr/local/lib/python3.12/
 
 # Add the application
 COPY . .
