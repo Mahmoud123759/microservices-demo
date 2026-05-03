@@ -87,7 +87,7 @@ metadata:
   name: cartservice
 ---
 apiVersion: apps/v1
-kind: statefulset
+kind: StatefulSet
 metadata:
   name: redis-cart
   labels:

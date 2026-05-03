@@ -24,10 +24,60 @@ jobs:
 
       matrix:
         service:
-          - name: shoppingassistantservice
-            dockerhub_repo: mahmoud235/shoppingassistantservice
-            path: src/shoppingassistantservice
+          - name: frontend
+            dockerhub_repo: mahmoud235/frontend
+            path: src/frontend
 
+
+          - name: cartservice
+            dockerhub_repo: mahmoud235/cartservice
+            path: src/cartservice/src
+            
+
+          - name: productcatalogservice
+            dockerhub_repo: mahmoud235/productcatalogservice
+            path: src/productcatalogservice
+            
+
+          - name: currencyservice
+            dockerhub_repo: mahmoud235/currencyservice
+            path: src/currencyservice
+            
+
+          - name: paymentservice
+            dockerhub_repo: mahmoud235/paymentservice
+            path: src/paymentservice
+            
+
+          - name: shippingservice
+            dockerhub_repo: mahmoud235/shippingservice
+            path: src/shippingservice
+            
+
+          - name: emailservice
+            dockerhub_repo: mahmoud235/emailservice
+            path: src/emailservice
+            
+
+          - name: checkoutservice
+            dockerhub_repo: mahmoud235/checkoutservice
+            path: src/checkoutservice
+            
+
+          - name: recommendationservice
+            dockerhub_repo: mahmoud235/recommendationservice
+            path: src/recommendationservice
+            
+
+          - name: adservice
+            dockerhub_repo: mahmoud235/adservice
+            path: src/adservice
+            
+
+          - name: loadgenerator
+            dockerhub_repo: mahmoud235/loadgenerator
+            path: src/loadgenerator
+            
 
     steps:
       # =========================
