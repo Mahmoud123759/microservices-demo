@@ -57,12 +57,17 @@ spec:
             cpu: 300m
             memory: 128Mi
         readinessProbe:
-          initialDelaySeconds: 15
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3  
           grpc:
             port: 7070
         livenessProbe:
-          initialDelaySeconds: 15
+          initialDelaySeconds: 5
           periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3  
           grpc:
             port: 7070
 ---
