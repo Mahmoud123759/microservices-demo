@@ -58,11 +58,15 @@ spec:
             memory: 300Mi
         readinessProbe:
           initialDelaySeconds: 20
+          failureThreshold: 3 
+          timeoutSeconds: 5 
           periodSeconds: 15
           grpc:
             port: 9555
         livenessProbe:
           initialDelaySeconds: 20
+          failureThreshold: 3 
+          timeoutSeconds: 5   
           periodSeconds: 15
           grpc:
             port: 9555
