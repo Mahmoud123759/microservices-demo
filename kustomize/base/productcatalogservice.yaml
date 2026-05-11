@@ -52,9 +52,17 @@ spec:
         - name: DISABLE_PROFILER
           value: "1"
         readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3 
           grpc:
             port: 3550
         livenessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3 
           grpc:
             port: 3550
         resources:
