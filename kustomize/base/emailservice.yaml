@@ -56,15 +56,17 @@ spec:
         readinessProbe:
           grpc:
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds:  5
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3 
         livenessProbe:
           grpc:
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds:  5
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5        # Increase from default 1 to 5 seconds
+          failureThreshold: 3 
         resources:
           requests:
             cpu: 100m
