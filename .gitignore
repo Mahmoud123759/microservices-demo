@@ -26,3 +26,9 @@ obj/
 pkg/
 release/wi-kubernetes-manifests.yaml
 vendor/
+skaffold.yaml
+rke2-health-check/
+e2e-tests/ 
+rke2_health_check.py
+
+
