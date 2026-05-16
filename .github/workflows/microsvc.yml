@@ -1,16 +1,14 @@
 name: Build, Scan and Push Microservices
 
 on:
- 
-    
   workflow_dispatch:
-    branches: [ main ]
     inputs:
       build_number:
-        description: 'Build number (e.g., 100, 101, 102)'
+        description: 'Build number (e.g. 100, 101, 102)'
         required: true
         default: '1'
         type: string
+
 permissions:
   contents: read
   security-events: write
@@ -20,15 +18,54 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      max-parallel: 1   # ✅ sequential execution (IMPORTANT)
-      fail-fast: false
+      max-parallel: 1
+      fail-fast: true
 
       matrix:
         service:
-          - name: shoppingassistantservice
-            dockerhub_repo: mahmoud235/shoppingassistantservice
-            path: src/shoppingassistantservice
+          - name: frontend
+            dockerhub_repo: mahmoud235/frontend
+            path: src/frontend
 
+          - name: cartservice
+            dockerhub_repo: mahmoud235/cartservice
+            path: src/cartservice/src
+
+          - name: productcatalogservice
+            dockerhub_repo: mahmoud235/productcatalogservice
+            path: src/productcatalogservice
+
+          - name: currencyservice
+            dockerhub_repo: mahmoud235/currencyservice
+            path: src/currencyservice
+
+          - name: paymentservice
+            dockerhub_repo: mahmoud235/paymentservice
+            path: src/paymentservice
+
+          - name: shippingservice
+            dockerhub_repo: mahmoud235/shippingservice
+            path: src/shippingservice
+
+          - name: emailservice
+            dockerhub_repo: mahmoud235/emailservice
+            path: src/emailservice
+
+          - name: checkoutservice
+            dockerhub_repo: mahmoud235/checkoutservice
+            path: src/checkoutservice
+
+          - name: recommendationservice
+            dockerhub_repo: mahmoud235/recommendationservice
+            path: src/recommendationservice
+
+          - name: adservice
+            dockerhub_repo: mahmoud235/adservice
+            path: src/adservice
+
+          - name: loadgenerator
+            dockerhub_repo: mahmoud235/loadgenerator
+            path: src/loadgenerator
 
     steps:
       # =========================
@@ -39,18 +76,15 @@ jobs:
         with:
           fetch-depth: 0
 
-
       # =========================
-      # Clean workspace (IMPORTANT)
+      # Clean workspace
       # =========================
       - name: Clean workspace
         run: git clean -fdx
 
-
       # =========================
       # Trivy FS Scan
       # =========================
-      # 3️⃣ Trivy FS Scan
       - name: Trivy FS Scan
         uses: aquasecurity/trivy-action@v0.20.0
         with:
@@ -76,23 +110,22 @@ jobs:
           context: ${{ matrix.service.path }}
           push: true
           tags: |
-            ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
+            ${{ matrix.service.dockerhub_repo }}:${{ github.event.inputs.build_number  }}
 
       # =========================
       # Trivy Image Scan
       # =========================
-      # 1️⃣1️⃣ Trivy Image Scan
       - name: Trivy Image Scan
         uses: aquasecurity/trivy-action@v0.20.0
         with:
-          image-ref: ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
+          image-ref: ${{ matrix.service.dockerhub_repo }}:${{ github.event.inputs.build_number  }}
 
       # =========================
       # Verify Image
       # =========================
       - name: Verify Docker Image
         run: |
-          docker pull ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}
+          docker pull ${{ matrix.service.dockerhub_repo }}:${{ github.event.inputs.build_number  }}
           echo "✔ Image pushed successfully"
 
       # =========================
@@ -102,6 +135,6 @@ jobs:
         run: |
           echo "=================================="
           echo "Service: ${{ matrix.service.name }}"
-          echo "Build: ${{ github.run_number }}"
-          echo "Image: ${{ matrix.service.dockerhub_repo }}:${{ github.run_number }}"
+          echo "Build: ${{ github.event.inputs.build_number  }}"
+          echo "Image: ${{ matrix.service.dockerhub_repo }}:${{ github.event.inputs.build_number  }}"
           echo "=================================="
